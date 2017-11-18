@@ -49,10 +49,15 @@ interface GithubUsers
 
 const pgp = pgPromise(pgpDefaultConfig);
 const db = pgp(options);
+let userName: string = '';
+
+if (~process.argv.indexOf('--username')) {
+  userName = process.argv[process.argv.indexOf('--username') + 1]
+}
 
 db.none('CREATE TABLE IF NOT EXISTS github_users (id BIGSERIAL UNIQUE, login TEXT, name TEXT, company TEXT, location TEXT)')
 .then(() => request({
-  uri: 'https://api.github.com/users/gaearon',
+  uri: `https://api.github.com/users/${userName}`,
   headers: {
         'User-Agent': 'Request-Promise'
     },
