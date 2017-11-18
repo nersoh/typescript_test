@@ -55,24 +55,33 @@ if (~process.argv.indexOf('--username')) {
   userName = process.argv[process.argv.indexOf('--username') + 1]
 }
 
-db.none('CREATE TABLE IF NOT EXISTS github_users (id BIGSERIAL UNIQUE, login TEXT, name TEXT, company TEXT, location TEXT)')
-.then(() => request({
-  uri: `https://api.github.com/users/${userName}`,
-  headers: {
-        'User-Agent': 'Request-Promise'
-    },
-  json: true
-}))
-.then((data: GithubUsers) => db.one(
-  'INSERT INTO github_users (id, login, name, company, location) VALUES ($[id], $[login], $[name], $[company], $[location]) RETURNING id', data) 
-)
-.then(({id}) => console.log(id))
-.catch(error => console.log(error.detail))
-.then(() => {
-  db.any('SELECT location, COUNT(*) AS total from github_users GROUP BY location ORDER BY total DESC, location ASC')
-    .then((data: { location: string, count: number }) => usersPerLocationStats(data))
+if (~process.argv.indexOf('--lisbon-users')) {
+  db.any("SELECT * from github_users WHERE LOWER(location) LIKE '%lisbon%'")
+    .then(data => {
+      console.log('[USERS IN LISBON   ]');
+      console.log(data);
+    })
     .then(() => process.exit(0));
-});
+} else {
+  db.none('CREATE TABLE IF NOT EXISTS github_users (id BIGSERIAL UNIQUE, login TEXT, name TEXT, company TEXT, location TEXT)')
+  .then(() => request({
+    uri: `https://api.github.com/users/${userName}`,
+    headers: {
+          'User-Agent': 'Request-Promise'
+      },
+    json: true
+  }))
+  .then((data: GithubUsers) => db.one(
+    'INSERT INTO github_users (id, login, name, company, location) VALUES ($[id], $[login], $[name], $[company], $[location]) RETURNING id', data) 
+  )
+  .then(({id}) => console.log(id))
+  .catch(error => console.log(error.detail))
+  .then(() => {
+    db.any('SELECT location, COUNT(*) AS total from github_users GROUP BY location ORDER BY total DESC, location ASC')
+      .then((data: { location: string, count: number }) => usersPerLocationStats(data))
+      .then(() => process.exit(0));
+  });
+}
 
 const usersPerLocationStats = (data) => {
   console.log('[USERS PER LOCATION   ]');
