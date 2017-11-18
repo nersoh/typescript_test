@@ -65,5 +65,16 @@ db.none('CREATE TABLE IF NOT EXISTS github_users (id BIGSERIAL UNIQUE, login TEX
 }))
 .then((data: GithubUsers) => db.one(
   'INSERT INTO github_users (id, login, name, company, location) VALUES ($[id], $[login], $[name], $[company], $[location]) RETURNING id', data) 
-).then(({id}) => console.log(id))
-.then(() => process.exit(0));
+)
+.then(({id}) => console.log(id))
+.catch(error => console.log(error.detail))
+.then(() => {
+  db.any('SELECT location, COUNT(*) AS total from github_users GROUP BY location ORDER BY total DESC, location ASC')
+    .then((data: { location: string, count: number }) => usersPerLocationStats(data))
+    .then(() => process.exit(0));
+});
+
+const usersPerLocationStats = (data) => {
+  console.log('[USERS PER LOCATION   ]');
+  data.forEach(item => console.log(item));
+}
